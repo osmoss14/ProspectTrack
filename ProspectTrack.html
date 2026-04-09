@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ProspectTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --accent: #f97316; --text: #f1f5f9; --muted: #64748b;
+    --success: #22c55e; --warning: #eab308; --danger: #ef4444;
+    --border: #2d3350; --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 480px; margin: 0 auto; }
+  h1,h2,h3 { font-family: 'Syne', sans-serif; }
+
+  .topbar { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--border); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar-title { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; }
+  .topbar-title span { color: var(--accent); }
+  .badge { background: var(--accent); color: white; font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 20px; font-family: 'Syne', sans-serif; }
+
+  .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; }
+  .nav-btn { flex: 1; padding: 10px 4px 8px; background: none; border: none; color: var(--muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: 'DM Sans', sans-serif; font-size: 0.65rem; font-weight: 500; transition: color .2s; }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn svg { width: 22px; height: 22px; }
+
+  .page { display: none; padding: 16px 16px 90px; }
+  .page.active { display: block; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color .2s, transform .1s; }
+  .card:active { transform: scale(0.98); border-color: var(--accent); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; }
+  .card-sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+  .chip { font-size: 0.65rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; font-family: 'Syne', sans-serif; white-space: nowrap; }
+  .chip-green { background: #14532d; color: var(--success); }
+  .chip-orange { background: #431407; color: var(--accent); }
+  .chip-gray { background: var(--surface2); color: var(--muted); }
+  .chip-yellow { background: #422006; color: var(--warning); }
+  .chip-red { background: #450a0a; color: var(--danger); }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 10px; text-align: center; }
+  .stat-num { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+  .stat-label { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+
+  .fab { position: fixed; bottom: 72px; right: calc(50% - 230px); width: 54px; height: 54px; border-radius: 50%; background: var(--accent); border: none; color: white; font-size: 1.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(249,115,22,.4); z-index: 99; transition: transform .15s; }
+  .fab:active { transform: scale(0.92); }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; align-items: flex-end; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 20px 20px 0 0; border: 1px solid var(--border); width: 100%; max-width: 480px; padding: 20px 18px 36px; max-height: 90vh; overflow-y: auto; animation: slideUp .25s ease-out; }
+  @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; }
+  .modal-close { background: var(--surface2); border: none; color: var(--muted); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+
+  label { display: block; font-size: 0.75rem; font-weight: 500; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  input, select, textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; padding: 11px 13px; margin-bottom: 14px; transition: border-color .2s; -webkit-appearance: none; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 70px; }
+  select option { background: var(--surface2); }
+
+  .btn { width: 100%; padding: 13px; border-radius: 12px; border: none; font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+  .btn:active { opacity: .8; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-secondary { background: var(--surface2); color: var(--text); margin-bottom: 8px; }
+
+  .section-title { font-family: 'Syne', sans-serif; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 18px 0 10px; }
+  .back-row { display: flex; align-items: center; gap: 8px; color: var(--accent); font-size: 0.85rem; font-weight: 500; cursor: pointer; margin-bottom: 14px; padding: 6px 0; }
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+  .empty p { font-size: 0.85rem; line-height: 1.6; }
+
+  .prog-wrap { background: var(--surface2); border-radius: 6px; height: 6px; overflow: hidden; margin-top: 6px; }
+  .prog-bar { height: 100%; background: var(--accent); border-radius: 6px; transition: width .4s; }
+
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-wrap input { padding-left: 36px; margin-bottom: 0; }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+
+  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; border-radius: 6px; display: flex; align-items: center; transition: color .2s; }
+  .del-btn:hover { color: var(--danger); }
+
+  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; }
+  .filter-chip { flex-shrink: 0; padding: 5px 12px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all .15s; }
+  .filter-chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  .porte-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .porte-cell { border-radius: 10px; padding: 10px 6px; text-align: center; cursor: pointer; border: 1px solid var(--border); transition: transform .1s; }
+  .porte-cell:active { transform: scale(0.93); }
+  .porte-cell-icon { font-size: 1.1rem; }
+  .porte-cell-num { font-size: .7rem; font-weight: 600; margin-top: 3px; font-family: 'Syne', sans-serif; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">Prospect<span>Track</span></div>
+  <div id="topbar-badge" class="badge">0 visite</div>
+</div>
+
+<!-- PAGES -->
+<div class="page active" id="page-home">
+  <div class="section-title">Vue d'ensemble</div>
+  <div class="stats">
+    <div class="stat-card"><div class="stat-num" id="s-q">0</div><div class="stat-label">Quartiers</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-b">0</div><div class="stat-label">Bâtiments</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-v">0</div><div class="stat-label">Visites</div></div>
+  </div>
+  <div class="section-title">Activité récente</div>
+  <div id="recent-list"></div>
+  <div class="section-title">Résultats</div>
+  <div id="result-chart"></div>
+</div>
+
+<div class="page" id="page-quartiers">
+  <div class="search-wrap">
+    <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="search-q" placeholder="Rechercher un quartier…" oninput="renderQuartiers()">
+  </div>
+  <div id="quartiers-list"></div>
+  <div id="view-batiments" style="display:none">
+    <div class="back-row" onclick="showView('main')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Retour aux quartiers
+    </div>
+    <div id="batiments-header"></div>
+    <div id="batiments-list"></div>
+  </div>
+  <div id="view-portes" style="display:none">
+    <div class="back-row" onclick="showView('batiments')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Retour au bâtiment
+    </div>
+    <div id="portes-header"></div>
+    <div id="portes-list"></div>
+  </div>
+</div>
+
+<div class="page" id="page-visites">
+  <div class="filter-row" id="prosp-filter"></div>
+  <div id="visites-list"></div>
+</div>
+
+<div class="page" id="page-equipe">
+  <div class="section-title">Prospecteurs</div>
+  <div id="equipe-list"></div>
+  <div class="section-title" style="margin-top:20px">Synchronisation équipe</div>
+  <div class="card" style="cursor:default">
+    <div class="card-title" style="font-size:.9rem;margin-bottom:6px">📤 Partager vos données</div>
+    <div class="card-sub" style="line-height:1.6">Exportez vos visites en JSON et partagez le fichier avec vos collègues via WhatsApp, email ou Drive. Ils pourront l'importer pour avoir vos données.</div>
+  </div>
+  <button class="btn btn-primary" onclick="exportData()" style="margin-bottom:10px">📤 Exporter (JSON)</button>
+  <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📥 Importer des données</button>
+  <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn active" onclick="goPage('home',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Accueil
+  </button>
+  <button class="nav-btn" onclick="goPage('quartiers',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Quartiers
+  </button>
+  <button class="nav-btn" onclick="goPage('visites',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Visites
+  </button>
+  <button class="nav-btn" onclick="goPage('equipe',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Équipe
+  </button>
+</div>
+
+<button class="fab" onclick="openFab()">+</button>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-quartier">
+  <div class="modal">
+    <div class="modal-title">Nouveau quartier <button class="modal-close" onclick="closeModal('modal-quartier')">✕</button></div>
+    <label>Nom du quartier</label><input id="q-nom" placeholder="Ex: Centre-ville, Belleville…">
+    <label>Ville</label><input id="q-ville" placeholder="Ex: Paris">
+    <button class="btn btn-primary" onclick="saveQuartier()">Enregistrer</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-batiment">
+  <div class="modal">
+    <div class="modal-title">Nouveau bâtiment <button class="modal-close" onclick="closeModal('modal-batiment')">✕</button></div>
+    <label>Adresse / Nom</label><input id="b-adresse" placeholder="Ex: 12 rue de la Paix, Bât. A…">
+    <label>Nombre d'étages (hors RDC)</label><input id="b-etages" type="number" min="0" max="50" placeholder="Ex: 5">
+    <label>Nombre de portes par étage</label><input id="b-portes" type="number" min="1" max="30" placeholder="Ex: 4">
+    <button class="btn btn-primary" onclick="saveBatiment()">Enregistrer</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-visite">
+  <div class="modal">
+    <div class="modal-title">Enregistrer une visite <button class="modal-close" onclick="closeModal('modal-visite')">✕</button></div>
+    <label>Quartier</label>
+    <select id="v-quartier" onchange="updateVBatiments()"><option value="">-- Choisir --</option></select>
+    <label>Bâtiment</label>
+    <select id="v-batiment"><option value="">-- Choisir --</option></select>
+    <label>Étage (0 = RDC)</label><input id="v-etage" type="number" min="0" placeholder="Ex: 2">
+    <label>Numéro de porte</label><input id="v-porte" placeholder="Ex: 12, A, 3B…">
+    <label>Prospecteur</label>
+    <select id="v-prosp"><option value="">-- Choisir --</option></select>
+    <label>Date</label><input id="v-date" type="date">
+    <label>Résultat</label>
+    <select id="v-result">
+      <option value="absent">🔴 Absent</option>
+      <option value="interesse">🟢 Intéressé</option>
+      <option value="rappeler">🟡 À rappeler</option>
+      <option value="refuse">⛔ Refus</option>
+      <option value="signe">⭐ Signé</option>
+    </select>
+    <label>Notes (optionnel)</label>
+    <textarea id="v-notes" placeholder="Observations, horaires préférés…"></textarea>
+    <button class="btn btn-primary" onclick="saveVisite()">Enregistrer la visite</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-prosp">
+  <div class="modal">
+    <div class="modal-title">Ajouter un prospecteur <button class="modal-close" onclick="closeModal('modal-prosp')">✕</button></div>
+    <label>Prénom & Nom</label><input id="p-nom" placeholder="Ex: Marie Dupont">
+    <label>Initiales</label><input id="p-init" placeholder="Ex: MD" maxlength="3">
+    <button class="btn btn-primary" onclick="saveProsp()">Ajouter</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-porte">
+  <div class="modal">
+    <div class="modal-title" id="mp-title">Porte <button class="modal-close" onclick="closeModal('modal-porte')">✕</button></div>
+    <div id="mp-content"></div>
+  </div>
+</div>
+
+<script>
+let db = JSON.parse(localStorage.getItem('pt_db') || '{"quartiers":[],"batiments":[],"visites":[],"prospecteurs":[]}');
+let curPage = 'home', curView = 'main', curQ = null, curB = null, filterP = 'all';
+
+function save() { localStorage.setItem('pt_db', JSON.stringify(db)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function goPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  curPage = name;
+  if (name==='quartiers') { showView('main'); renderQuartiers(); }
+  if (name==='visites') renderVisites();
+  if (name==='home') renderHome();
+  if (name==='equipe') renderEquipe();
+}
+
+function openFab() {
+  if (curPage==='equipe') { openModal('modal-prosp'); return; }
+  if (curPage==='quartiers') {
+    if (curView==='batiments') { openModal('modal-batiment'); return; }
+    if (curView==='portes') { fillVisiteSelects(); document.getElementById('v-quartier').value=curQ; updateVBatiments(); setTimeout(()=>{document.getElementById('v-batiment').value=curB;},50); openModal('modal-visite'); return; }
+    openModal('modal-quartier'); return;
+  }
+  fillVisiteSelects(); openModal('modal-visite');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showView(v) {
+  curView = v;
+  document.getElementById('quartiers-list').style.display = v==='main'?'block':'none';
+  document.getElementById('search-q').parentElement.style.display = v==='main'?'block':'none';
+  document.getElementById('view-batiments').style.display = v==='batiments'?'block':'none';
+  document.getElementById('view-portes').style.display = v==='portes'?'block':'none';
+  if (v==='batiments') renderBatiments();
+  if (v==='portes') renderPortes();
+}
+
+// QUARTIERS
+function renderQuartiers() {
+  const q = (document.getElementById('search-q').value||'').toLowerCase();
+  const list = db.quartiers.filter(x => x.nom.toLowerCase().includes(q)||x.ville.toLowerCase().includes(q));
+  const el = document.getElementById('quartiers-list');
+  if (!list.length) { el.innerHTML=`<div class="empty"><div class="empty-icon">🏘️</div><p>Aucun quartier.<br>Appuyez sur <b>+</b> pour en ajouter.</p></div>`; return; }
+  el.innerHTML = list.map(q=>{
+    const bats=db.batiments.filter(b=>b.quartierId===q.id).length;
+    const vis=db.visites.filter(v=>v.quartierId===q.id).length;
+    return `<div class="card" onclick="curQ='${q.id}';showView('batiments')">
+      <div class="card-head"><div class="card-title">${q.nom}</div><span class="chip chip-orange">${bats} bât.</span></div>
+      <div class="card-sub">${q.ville} · ${vis} visite${vis>1?'s':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function saveQuartier() {
+  const nom=document.getElementById('q-nom').value.trim(), ville=document.getElementById('q-ville').value.trim();
+  if (!nom||!ville) return alert('Remplissez tous les champs');
+  db.quartiers.push({id:uid(),nom,ville}); save(); closeModal('modal-quartier');
+  document.getElementById('q-nom').value=''; document.getElementById('q-ville').value='';
+  renderQuartiers(); renderHome();
+}
+
+// BATIMENTS
+function renderBatiments() {
+  const q=db.quartiers.find(x=>x.id===curQ);
+  document.getElementById('batiments-header').innerHTML=`<h2 style="font-family:Syne;font-size:1.1rem;margin-bottom:12px">${q?.nom} <span style="color:var(--muted);font-size:.8rem">${q?.ville}</span></h2>`;
+  const list=db.batiments.filter(b=>b.quartierId===curQ);
+  const el=document.getElementById('batiments-list');
+  if (!list.length) { el.innerHTML=`<div class="empty"><div class="empty-icon">🏢</div><p>Aucun bâtiment.<br>Appuyez sur <b>+</b> pour en ajouter un.</p></div>`; return; }
+  el.innerHTML=list.map(b=>{
+    const vis=db.visites.filter(v=>v.batimentId===b.id).length;
+    const total=(b.etages+1)*b.portes;
+    const pct=total>0?Math.round(vis/total*100):0;
+    return `<div class="card" onclick="curB='${b.id}';showView('portes')">
+      <div class="card-head"><div class="card-title">${b.adresse}</div><span class="chip chip-gray">${b.etages} ét.</span></div>
+      <div class="card-sub">${vis}/${total} portes visitées · ${pct}%</div>
+      <div class="prog-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function saveBatiment() {
+  const adresse=document.getElementById('b-adresse').value.trim();
+  const etages=parseInt(document.getElementById('b-etages').value)||0;
+  const portes=parseInt(document.getElementById('b-portes').value)||1;
+  if (!adresse) return alert('Entrez une adresse');
+  db.batiments.push({id:uid(),quartierId:curQ,adresse,etages,portes}); save(); closeModal('modal-batiment');
+  document.getElementById('b-adresse').value=''; document.getElementById('b-etages').value=''; document.getElementById('b-portes').value='';
+  renderBatiments(); renderHome();
+}
+
+// PORTES
+function rColor(r){return {interesse:'#14532d55',absent:'#1c1917',rappeler:'#42200644',refuse:'#450a0a55',signe:'#14532d'}[r]||'var(--surface2)';}
+function rIcon(r){return {interesse:'🟢',absent:'🔴',rappeler:'🟡',refuse:'⛔',signe:'⭐'}[r]||'🚪';}
+function rLabel(r){return {interesse:'Intéressé',absent:'Absent',rappeler:'À rappeler',refuse:'Refus',signe:'Signé'}[r]||r;}
+function rChip(r){return {interesse:'chip-green',absent:'chip-gray',rappeler:'chip-yellow',refuse:'chip-red',signe:'chip-green'}[r]||'chip-gray';}
+
+function renderPortes() {
+  const b=db.batiments.find(x=>x.id===curB);
+  const q=db.quartiers.find(x=>x.id===b?.quartierId);
+  document.getElementById('portes-header').innerHTML=`<h2 style="font-family:Syne;font-size:1.05rem;margin-bottom:12px">${b?.adresse}<br><span style="color:var(--muted);font-size:.8rem">${q?.nom}</span></h2>`;
+  let html='';
+  for (let et=0;et<=b.etages;et++) {
+    html+=`<div class="section-title">${et===0?'Rez-de-chaussée':'Étage '+et}</div><div class="porte-grid">`;
+    for (let p=1;p<=b.portes;p++) {
+      const vis=db.visites.filter(v=>v.batimentId===curB&&v.etage==et&&v.porte==p);
+      const last=vis[vis.length-1];
+      html+=`<div class="porte-cell" style="background:${rColor(last?.result)}" onclick="showPorteDetail(${et},${p})">
+        <div class="porte-cell-icon">${rIcon(last?.result)}</div>
+        <div class="porte-cell-num">${p}</div>
+      </div>`;
+    }
+    html+='</div>';
+  }
+  document.getElementById('portes-list').innerHTML=html;
+}
+
+function showPorteDetail(et,p) {
+  const vis=db.visites.filter(v=>v.batimentId===curB&&v.etage==et&&v.porte==p);
+  document.getElementById('mp-title').innerHTML=`Étage ${et} · Porte ${p} <button class="modal-close" onclick="closeModal('modal-porte')">✕</button>`;
+  let html='';
+  if (!vis.length) html=`<div class="empty"><div class="empty-icon">🚪</div><p>Aucune visite pour cette porte.</p></div>`;
+  else html=vis.slice().reverse().map(v=>{
+    const pr=db.prospecteurs.find(x=>x.id===v.prospId);
+    return `<div class="card" style="cursor:default">
+      <div class="card-head"><div style="font-size:.85rem;font-weight:600">${formatDate(v.date)}</div><span class="chip ${rChip(v.result)}">${rLabel(v.result)}</span></div>
+      <div class="card-sub">par ${pr?.nom||'?'}</div>
+      ${v.notes?`<div style="font-size:.78rem;color:var(--muted);margin-top:4px">${v.notes}</div>`:''}
+    </div>`;
+  }).join('');
+  html+=`<button class="btn btn-primary" style="margin-top:10px" onclick="closeModal('modal-porte');fillVisiteSelects();document.getElementById('v-quartier').value=curQ;updateVBatiments();setTimeout(()=>{document.getElementById('v-batiment').value=curB;document.getElementById('v-etage').value=${et};document.getElementById('v-porte').value=${p};},60);openModal('modal-visite')">+ Nouvelle visite ici</button>`;
+  document.getElementById('mp-content').innerHTML=html;
+  openModal('modal-porte');
+}
+
+// VISITES
+function fillVisiteSelects() {
+  document.getElementById('v-quartier').innerHTML='<option value="">-- Choisir --</option>'+db.quartiers.map(q=>`<option value="${q.id}">${q.nom}</option>`).join('');
+  document.getElementById('v-prosp').innerHTML='<option value="">-- Choisir --</option>'+db.prospecteurs.map(p=>`<option value="${p.id}">${p.nom}</option>`).join('');
+  document.getElementById('v-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('v-batiment').innerHTML='<option value="">-- Choisir un quartier d\'abord --</option>';
+  document.getElementById('v-etage').value=''; document.getElementById('v-porte').value=''; document.getElementById('v-notes').value='';
+}
+function updateVBatiments() {
+  const qId=document.getElementById('v-quartier').value;
+  document.getElementById('v-batiment').innerHTML='<option value="">-- Choisir --</option>'+db.batiments.filter(b=>b.quartierId===qId).map(b=>`<option value="${b.id}">${b.adresse}</option>`).join('');
+}
+function saveVisite() {
+  const qId=document.getElementById('v-quartier').value, bId=document.getElementById('v-batiment').value;
+  const etage=document.getElementById('v-etage').value, porte=document.getElementById('v-porte').value.trim();
+  const prospId=document.getElementById('v-prosp').value, date=document.getElementById('v-date').value;
+  const result=document.getElementById('v-result').value, notes=document.getElementById('v-notes').value.trim();
+  if (!qId||!bId||etage===''||!porte||!prospId||!date) return alert('Remplissez tous les champs obligatoires');
+  db.visites.push({id:uid(),quartierId:qId,batimentId:bId,etage,porte,prospId,date,result,notes});
+  save(); closeModal('modal-visite');
+  renderHome(); if (curPage==='visites') renderVisites(); if (curView==='portes') renderPortes();
+}
+
+function renderVisites() {
+  document.getElementById('prosp-filter').innerHTML=`<div class="filter-chip ${filterP==='all'?'active':''}" onclick="filterP='all';renderVisites()">Tous</div>`+
+    db.prospecteurs.map(p=>`<div class="filter-chip ${filterP===p.id?'active':''}" onclick="filterP='${p.id}';renderVisites()">${p.nom.split(' ')[0]}</div>`).join('');
+  let vis=[...db.visites].sort((a,b)=>b.date.localeCompare(a.date));
+  if (filterP!=='all') vis=vis.filter(v=>v.prospId===filterP);
+  const el=document.getElementById('visites-list');
+  if (!vis.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>Aucune visite.</p></div>`;return;}
+  el.innerHTML=vis.map(v=>{
+    const b=db.batiments.find(x=>x.id===v.batimentId), q=db.quartiers.find(x=>x.id===v.quartierId), pr=db.prospecteurs.find(x=>x.id===v.prospId);
+    return `<div class="card" style="cursor:default">
+      <div class="card-head"><div class="card-title" style="font-size:.9rem">${b?.adresse||'?'} · Ét.${v.etage} P.${v.porte}</div><span class="chip ${rChip(v.result)}">${rLabel(v.result)}</span></div>
+      <div class="card-sub">${q?.nom||''} · ${formatDate(v.date)} · ${pr?.nom||'?'}</div>
+      ${v.notes?`<div style="font-size:.78rem;color:var(--muted);margin-top:4px">${v.notes}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// HOME
+function renderHome() {
+  document.getElementById('s-q').textContent=db.quartiers.length;
+  document.getElementById('s-b').textContent=db.batiments.length;
+  document.getElementById('s-v').textContent=db.visites.length;
+  document.getElementById('topbar-badge').textContent=db.visites.length+' visite'+(db.visites.length>1?'s':'');
+  const rec=[...db.visites].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  const rl=document.getElementById('recent-list');
+  if (!rec.length){rl.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>Aucune visite encore.<br>Commencez par ajouter un quartier !</p></div>`;}
+  else rl.innerHTML=rec.map(v=>{
+    const b=db.batiments.find(x=>x.id===v.batimentId), pr=db.prospecteurs.find(x=>x.id===v.prospId);
+    return `<div class="card" style="cursor:default">
+      <div class="card-head"><div style="font-size:.85rem;font-weight:600">${b?.adresse||'?'} · Ét.${v.etage} P.${v.porte}</div><span class="chip ${rChip(v.result)}">${rLabel(v.result)}</span></div>
+      <div class="card-sub">${formatDate(v.date)} · ${pr?.nom||'?'}</div>
+    </div>`;
+  }).join('');
+  const cnt={interesse:0,absent:0,rappeler:0,signe:0,refuse:0};
+  db.visites.forEach(v=>{if(cnt[v.result]!==undefined)cnt[v.result]++;});
+  const tot=db.visites.length||1;
+  const bars=[{k:'signe',l:'Signé',c:'var(--success)'},{k:'interesse',l:'Intéressé',c:'var(--accent)'},{k:'rappeler',l:'À rappeler',c:'var(--warning)'},{k:'absent',l:'Absent',c:'var(--muted)'},{k:'refuse',l:'Refus',c:'var(--danger)'}];
+  document.getElementById('result-chart').innerHTML=bars.map(b=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="width:80px;font-size:.75rem;color:var(--muted);text-align:right">${b.l}</div>
+      <div style="flex:1;background:var(--surface2);border-radius:6px;height:18px;overflow:hidden">
+        <div style="height:100%;background:${b.c};width:${Math.round(cnt[b.k]/tot*100)}%;border-radius:6px"></div>
+      </div>
+      <div style="width:24px;font-size:.75rem;font-weight:600">${cnt[b.k]}</div>
+    </div>`).join('');
+}
+
+// EQUIPE
+function renderEquipe() {
+  const el=document.getElementById('equipe-list');
+  if (!db.prospecteurs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div><p>Aucun prospecteur.<br>Appuyez sur <b>+</b> pour en ajouter.</p></div>`;return;}
+  el.innerHTML=db.prospecteurs.map(p=>{
+    const vis=db.visites.filter(v=>v.prospId===p.id).length;
+    const sig=db.visites.filter(v=>v.prospId===p.id&&v.result==='signe').length;
+    return `<div class="card" style="cursor:default">
+      <div class="card-head">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:Syne;font-weight:800;font-size:.85rem">${p.initiales||p.nom.slice(0,2).toUpperCase()}</div>
+          <div><div class="card-title" style="font-size:.95rem">${p.nom}</div><div class="card-sub">${vis} visite${vis>1?'s':''} · ${sig} signé${sig>1?'s':''}</div></div>
+        </div>
+        <button class="del-btn" onclick="if(confirm('Supprimer ?')){db.prospecteurs=db.prospecteurs.filter(x=>x.id!=='${p.id}');save();renderEquipe();}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function saveProsp() {
+  const nom=document.getElementById('p-nom').value.trim(), init=document.getElementById('p-init').value.trim().toUpperCase()||nom.slice(0,2).toUpperCase();
+  if (!nom) return alert('Entrez un nom');
+  db.prospecteurs.push({id:uid(),nom,initiales:init}); save(); closeModal('modal-prosp');
+  document.getElementById('p-nom').value=''; document.getElementById('p-init').value='';
+  renderEquipe();
+}
+
+// EXPORT/IMPORT
+function exportData() {
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='prospecttrack_'+new Date().toISOString().split('T')[0]+'.json'; a.click();
+}
+function importData(e) {
+  const file=e.target.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try {
+      const data=JSON.parse(ev.target.result);
+      if (data.quartiers&&data.batiments&&data.visites) { db=data; save(); renderHome(); renderEquipe(); alert('✅ Données importées !'); }
+      else alert('Fichier invalide');
+    } catch { alert('Erreur de lecture'); }
+  };
+  reader.readAsText(file);
+}
+
+function formatDate(d) {
+  if (!d) return '?'; const [y,m,j]=d.split('-'); return `${j}/${m}/${y}`;
+}
+
+renderHome();
+</script>
+</body>
+</html>
